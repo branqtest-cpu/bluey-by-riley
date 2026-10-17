@@ -31,7 +31,7 @@ Works with just the Command Line Tools. Shortcuts work anywhere:
 | ⌥Space | Wake him up to talk / back to follow mode |
 | ⌃⌥S | Stop him using the computer |
 
-The menu bar blob also sets mood, cursor size (48 to 120 pt), glow, and where the phone sits (left, center, right).
+The Mac app supports macOS Monterey 12.3 and later. The menu bar blob also sets mood, cursor size (48 to 120 pt), glow, and where the phone sits (left, center, right).
 
 ## iPhone app
 
@@ -39,11 +39,16 @@ Needs full Xcode. Open `GooglyEyes.xcodeproj` (regenerate with `xcodegen generat
 
 On the phone: double tap him to wake him up or put him back to sleep, and press and hold to ask him something. The faint speaker button at the top right sets the chirp volume and picks which Mac to pair with.
 
+## Android phone app
+
+Open the `android/` folder in Android Studio, let Gradle sync, and run the `app` configuration on an Android 8.0 (API 26) or later phone. The Android app pairs with the Mac over Bonjour on the same Wi-Fi; grant microphone permission when prompted. Double tap Bluey to start/end a live session and press and hold to ask a question. The Android client includes the live face, Mac pairing, Realtime voice input, and Mac tool forwarding. Meeting-note recording, saved session history, and the chirp-volume controls remain available in the iPhone app only.
+
 ## Layout
 
 - `Shared/` pairing protocol (Bonjour `_googly._tcp`, newline JSON) and colors, used by both apps
 - `Mac/` menu bar app (Swift package target `GooglyMac`)
 - `iOS/` iPhone app (SwiftUI)
+- `android/` Android phone app (Kotlin and Jetpack Compose)
 
 ## License
 

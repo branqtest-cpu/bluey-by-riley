@@ -1,4 +1,7 @@
 import AppKit
+import CoreImage
+import CoreMedia
+import CoreVideo
 import ScreenCaptureKit
 import Vision
 
@@ -87,8 +90,23 @@ enum ScreenReader {
         config.width = Int(CGFloat(display.width) * scale)
         config.height = Int(CGFloat(display.height) * scale)
         config.showsCursor = false
-        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
         let size = CGSize(width: display.width, height: display.height)
+        let output = ScreenshotOutput()
+        let stream = SCStream(filter: filter, configuration: config, delegate: output)
+        try stream.addStreamOutput(output, type: .screen,
+                                   sampleHandlerQueue: DispatchQueue(label: "co.visionairy.googly.screenshot"))
+        do {
+            try await stream.startCapture()
+            let image = try await output.nextImage()
+            try await stream.stopCapture()
+            return try await makeSnapshot(image, size: size)
+        } catch {
+            try? await stream.stopCapture()
+            throw error
+        }
+    }
+
+    private static func makeSnapshot(_ image: CGImage, size: CGSize) async throws -> ScreenSnapshot {
         // Read the front app's controls at the same time as the text.
         let controlsTask = Task.detached(priority: .userInitiated) { ControlsReader.read(screen: size) }
         let lines = try recognize(image, in: size)
@@ -125,6 +143,7 @@ enum ScreenReader {
                     words.append(Target(id: "W\(wordCount)", text: word, rect: toScreen(box)))
                 }
             }
+
             result.append((line, words))
         }
         return result
@@ -143,5 +162,48 @@ enum ScreenReader {
         NSGraphicsContext.current?.cgContext.draw(image, in: CGRect(origin: .zero, size: size))
         NSGraphicsContext.restoreGraphicsState()
         return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.72]) ?? Data()
+    }
+}
+
+private final class ScreenshotOutput: NSObject, SCStreamOutput, SCStreamDelegate {
+    private let lock = NSLock()
+    private let context = CIContext()
+    private var result: Result<CGImage, Error>?
+    private var continuation: CheckedContinuation<CGImage, Error>?
+
+    func nextImage() async throws -> CGImage {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            if let result {
+                lock.unlock()
+                continuation.resume(with: result)
+            } else {
+                self.continuation = continuation
+                lock.unlock()
+            }
+        }
+    }
+
+    func stream(_ stream: SCStream, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, of type: SCStreamOutputType) {
+        guard type == .screen, let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let rect = CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
+        guard let image = context.createCGImage(CIImage(cvPixelBuffer: pixelBuffer), from: rect) else { return }
+        finish(.success(image))
+    }
+
+    func stream(_ stream: SCStream, didStopWithError error: Error) {
+        finish(.failure(error))
+    }
+
+    private func finish(_ result: Result<CGImage, Error>) {
+        lock.lock()
+        guard let continuation else {
+            if case nil = self.result { self.result = result }
+            lock.unlock()
+            return
+        }
+        self.continuation = nil
+        lock.unlock()
+        continuation.resume(with: result)
     }
 }

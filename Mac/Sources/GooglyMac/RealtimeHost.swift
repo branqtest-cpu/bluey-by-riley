@@ -109,7 +109,7 @@ final class RealtimeHost {
     func demoResearch(_ question: String, out: String) {
         Task { @MainActor in
             reports.showLoading(question)
-            try? await Task.sleep(for: .milliseconds(400))
+            try? await Task.sleep(nanoseconds: 400_000_000)
             reports.snapshot(expanded: false, to: out + "-loading.png")
             do {
                 let report = try await WebResearch.research(question, context: nil)
@@ -119,10 +119,10 @@ final class RealtimeHost {
                 reports.showError(error.localizedDescription)
                 print(error)
             }
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(nanoseconds: 500_000_000)
             reports.snapshot(expanded: false, to: out + "-preview.png")
             reports.snapshot(expanded: true, to: out + "-open.png")
-            try? await Task.sleep(for: .milliseconds(800))
+            try? await Task.sleep(nanoseconds: 800_000_000)
             reports.snapshot(expanded: true, to: out + "-open.png")
             exit(0)
         }
@@ -347,11 +347,11 @@ final class RealtimeHost {
             let saved = ComputerControl.mouseLocation
             await fly(to: target.point)
             view.clickEffect(at: target.point, right: right)
-            try? await Task.sleep(for: .milliseconds(90))  // the click lands at the bottom of the squish
+            try? await Task.sleep(nanoseconds: 90_000_000)  // the click lands at the bottom of the squish
             await ComputerControl.click(at: target.point, right: right, count: count)
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(nanoseconds: 60_000_000)
             ComputerControl.warp(to: saved)  // hand your pointer back where you left it
-            try? await Task.sleep(for: .milliseconds(380))
+            try? await Task.sleep(nanoseconds: 380_000_000)
             let verb = right ? "Right-clicked" : count == 2 ? "Double-clicked" : "Clicked"
             return await look(prefix: "\(verb) \(target.name == "that spot" ? "there" : "\"\(target.name)\"").")
 
@@ -369,10 +369,10 @@ final class RealtimeHost {
             }
             await ComputerControl.type(text) { chunk in view.typedEffect(chunk) }
             if args["press_return"] as? Bool ?? false {
-                try? await Task.sleep(for: .milliseconds(120))
+                try? await Task.sleep(nanoseconds: 120_000_000)
                 _ = try? ComputerControl.press("return")
                 view.bubble("↩")
-                try? await Task.sleep(for: .milliseconds(550))
+                try? await Task.sleep(nanoseconds: 550_000_000)
                 return await look(prefix: "Typed it and pressed Return.")
             }
             return ("Typed it.", nil)
@@ -391,7 +391,7 @@ final class RealtimeHost {
             } catch {
                 return (error.localizedDescription, nil)
             }
-            try? await Task.sleep(for: .milliseconds(380))
+            try? await Task.sleep(nanoseconds: 380_000_000)
             return await look(prefix: "Pressed \(keys).")
 
         case "scroll":
@@ -413,7 +413,7 @@ final class RealtimeHost {
             view.bubble(arrow)
             await ComputerControl.scroll(dx: dx, dy: dy, at: point)
             ComputerControl.warp(to: saved)
-            try? await Task.sleep(for: .milliseconds(280))
+            try? await Task.sleep(nanoseconds: 280_000_000)
             return await look(prefix: "Scrolled \(direction).")
 
         case "drag":
@@ -425,22 +425,22 @@ final class RealtimeHost {
             await fly(to: from.point)
             engine.press(depth: 0.1)
             ComputerControl.dragBegin(at: from.point)
-            try? await Task.sleep(for: .milliseconds(120))
+            try? await Task.sleep(nanoseconds: 120_000_000)
             engine.dragging = true
             overlay.mode = .pinned(to.point)
-            try? await Task.sleep(for: .milliseconds(40))
+            try? await Task.sleep(nanoseconds: 40_000_000)
             // The real drag follows the animated cursor, so what you see is what happens.
             while engine.timeToArrive(CACurrentMediaTime()) > 0 {
                 ComputerControl.dragMove(to: engine.tip)
-                try? await Task.sleep(for: .milliseconds(16))
+                try? await Task.sleep(nanoseconds: 16_000_000)
             }
             ComputerControl.dragMove(to: to.point)
-            try? await Task.sleep(for: .milliseconds(80))
+            try? await Task.sleep(nanoseconds: 80_000_000)
             ComputerControl.dragEnd(at: to.point)
             engine.dragging = false
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(nanoseconds: 60_000_000)
             ComputerControl.warp(to: saved)
-            try? await Task.sleep(for: .milliseconds(280))
+            try? await Task.sleep(nanoseconds: 280_000_000)
             return await look(prefix: "Dragged it.")
 
         case "open_app":
@@ -449,7 +449,7 @@ final class RealtimeHost {
             if engine.isHome { overlay.mode = .docked }
             view.bubble("Opening \(name)")
             let result = await ComputerControl.openApp(name)
-            try? await Task.sleep(for: .milliseconds(900))
+            try? await Task.sleep(nanoseconds: 900_000_000)
             return await look(prefix: result)
 
         case "open_url":
@@ -457,7 +457,7 @@ final class RealtimeHost {
             if engine.isHome { overlay.mode = .docked }
             let result = ComputerControl.openURL(url)
             view.bubble(result.hasPrefix("Opened ") ? String(result.dropFirst(7).dropLast()) : "Hmm")
-            try? await Task.sleep(for: .milliseconds(1100))
+            try? await Task.sleep(nanoseconds: 1_100_000_000)
             return await look(prefix: result)
 
         default:
@@ -484,9 +484,9 @@ final class RealtimeHost {
     /// Flies the cursor to a spot and waits until it has landed.
     private func fly(to point: CGPoint) async {
         overlay.mode = .pinned(point)
-        try? await Task.sleep(for: .milliseconds(40))  // the next frame plans the trip
+        try? await Task.sleep(nanoseconds: 40_000_000)  // the next frame plans the trip
         let wait = engine.timeToArrive(CACurrentMediaTime())
-        if wait > 0 { try? await Task.sleep(for: .seconds(wait + 0.05)) }
+        if wait > 0 { try? await Task.sleep(nanoseconds: UInt64((wait + 0.05) * 1_000_000_000)) }
     }
 
     // MARK: Pointing choreography

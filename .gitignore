@@ -3,6 +3,10 @@ build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
+.gradle/
+local.properties
+android/.kotlin/
+android/app/build/
 .DS_Store
 # API keys never go in git
 Secrets.xcconfig

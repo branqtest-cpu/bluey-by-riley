@@ -53,12 +53,12 @@ enum ComputerControl {
         let up: CGEventType = right ? .rightMouseUp : .leftMouseUp
         let button: CGMouseButton = right ? .right : .left
         post(.mouseMoved, at: point, button: button)
-        try? await Task.sleep(for: .milliseconds(30))
+        try? await Task.sleep(nanoseconds: 30_000_000)
         for i in 1...max(1, count) {
             post(down, at: point, button: button, clickState: i)
-            try? await Task.sleep(for: .milliseconds(35))
+            try? await Task.sleep(nanoseconds: 35_000_000)
             post(up, at: point, button: button, clickState: i)
-            if i < count { try? await Task.sleep(for: .milliseconds(80)) }
+            if i < count { try? await Task.sleep(nanoseconds: 80_000_000) }
         }
     }
 
@@ -84,7 +84,7 @@ enum ComputerControl {
                                 wheel1: Int32(-dy / steps), wheel2: Int32(-dx / steps), wheel3: 0)
             event?.location = point
             event?.post(tap: .cghidEventTap)
-            try? await Task.sleep(for: .milliseconds(16))
+            try? await Task.sleep(nanoseconds: 16_000_000)
         }
     }
 
@@ -101,7 +101,7 @@ enum ComputerControl {
     static func type(_ text: String, onChunk: (String) -> Void) async {
         // Short text types at a natural pace; long text goes in faster, a few characters at a time.
         let chunkSize = text.count > 160 ? 6 : 1
-        let pause: Duration = text.count > 160 ? .milliseconds(12) : .milliseconds(22)
+        let pause: UInt64 = text.count > 160 ? 12_000_000 : 22_000_000
         var chunk = ""
         for character in text {
             if character == "\n" || character == "\r" || character == "\t" {
@@ -109,10 +109,10 @@ enum ComputerControl {
                     typeUnicode(chunk)
                     onChunk(chunk)
                     chunk = ""
-                    try? await Task.sleep(for: pause)
+                    try? await Task.sleep(nanoseconds: pause)
                 }
                 pressKey(code: character == "\t" ? kVK_Tab : kVK_Return, flags: [])
-                try? await Task.sleep(for: pause)
+                try? await Task.sleep(nanoseconds: pause)
                 continue
             }
             chunk.append(character)
@@ -120,7 +120,7 @@ enum ComputerControl {
                 typeUnicode(chunk)
                 onChunk(chunk)
                 chunk = ""
-                try? await Task.sleep(for: pause)
+                try? await Task.sleep(nanoseconds: pause)
             }
         }
         if !chunk.isEmpty {

@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "Googly",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS("12.3")],
     products: [
         .executable(name: "GooglyMac", targets: ["GooglyMac"]),
     ],

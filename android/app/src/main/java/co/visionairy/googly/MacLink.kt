@@ -44,6 +44,7 @@ class MacLink(context: Context) {
     val face = _face.asStateFlow()
     private val pending = ConcurrentHashMap<String, (JSONObject?) -> Unit>()
     private val knownServices = ConcurrentHashMap<String, NsdServiceInfo>()
+    @Volatile private var connectionGeneration: Int = 0
     @Volatile private var socket: Socket? = null
     @Volatile private var writer: BufferedWriter? = null
     @Volatile private var desiredMac: String? = preferences.getString("preferredMac", null)
@@ -132,6 +133,8 @@ class MacLink(context: Context) {
     }
 
     private fun connect(info: NsdServiceInfo) {
+        // Start a new connection generation so stale attempts won't auto-reconnect.
+        val myGeneration = synchronized(this) { ++connectionGeneration }
         if (_connectedMac.value == info.serviceName) return
         disconnect()
         val host = if (Build.VERSION.SDK_INT >= 34) info.hostAddresses.firstOrNull() else info.host
@@ -158,9 +161,12 @@ class MacLink(context: Context) {
                 Log.e(TAG, "Mac connection failed", error)
             } finally {
                 if (socket === connection) disconnect()
+                // Only schedule a reconnect if this coroutine's generation is still current.
                 if (scope.coroutineContext[kotlinx.coroutines.Job]?.isActive == true) scope.launch {
                     kotlinx.coroutines.delay(RECONNECT_DELAY_MS)
-                    knownServices[info.serviceName]?.let(::connect)
+                    if (myGeneration == connectionGeneration) {
+                        knownServices[info.serviceName]?.let(::connect)
+                    }
                 }
             }
         }
@@ -184,6 +190,8 @@ class MacLink(context: Context) {
 
     @Synchronized
     private fun disconnect() {
+        // Invalidate pending reconnection attempts from older connection generations.
+        synchronized(this) { connectionGeneration++ }
         try {
             socket?.close()
         } catch (_: Exception) {

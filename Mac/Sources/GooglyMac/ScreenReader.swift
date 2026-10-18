@@ -97,7 +97,23 @@ enum ScreenReader {
                                    sampleHandlerQueue: DispatchQueue(label: "co.visionairy.googly.screenshot"))
         do {
             try await stream.startCapture()
-            let image = try await output.nextImage()
+            let image: CGImage = try await withThrowingTaskGroup(of: CGImage.self) { group in
+                group.addTask {
+                    try await output.nextImage()
+                }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: 1_500_000_000)
+                    throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError,
+                                  userInfo: [NSLocalizedDescriptionKey: "Timed out waiting for a screen capture frame."])
+                }
+                let image = try await group.next()
+                group.cancelAll()
+                guard let image else {
+                    throw NSError(domain: NSCocoaErrorDomain, code: NSUserCancelledError,
+                                  userInfo: [NSLocalizedDescriptionKey: "No screen capture frame was produced."])
+                }
+                return image
+            }
             try await stream.stopCapture()
             return try await makeSnapshot(image, size: size)
         } catch {

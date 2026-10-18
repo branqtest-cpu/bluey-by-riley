@@ -106,7 +106,6 @@ class RealtimeSession(
         val request = Request.Builder()
             .url("wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1")
             .header("Authorization", "Bearer $token")
-            .header("OpenAI-Beta", "realtime=v1")
             .build()
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
